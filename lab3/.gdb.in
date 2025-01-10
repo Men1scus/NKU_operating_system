@@ -1,0 +1,7 @@
+target remote localhost:1234
+<<<<<<< HEAD
+break *0xffffffffc02042be
+=======
+break *0xffffffffc02042a0
+>>>>>>> 747620b (lab2)
+continue

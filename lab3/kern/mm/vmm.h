@@ -15,7 +15,7 @@ struct vma_struct {
     struct mm_struct *vm_mm; // the set of vma using the same PDT 
     uintptr_t vm_start;      // start addr of vma      
     uintptr_t vm_end;        // end addr of vma, not include the vm_end itself
-    uint_t vm_flags;       // flags of vma
+    uint_t vm_flags;         // flags of vma
     list_entry_t list_link;  // linear list link which sorted by start addr of vma
 };
 
@@ -27,6 +27,7 @@ struct vma_struct {
 #define VM_EXEC                 0x00000004
 
 // the control struct for a set of vma using the same PDT
+// 属于一个页表项的多个vma的集合
 struct mm_struct {
     list_entry_t mmap_list;        // linear list link which sorted by start addr of vma
     struct vma_struct *mmap_cache; // current accessed vma, used for speed purpose
@@ -35,10 +36,14 @@ struct mm_struct {
     void *sm_priv;                   // the private data for swap manager
 };
 
+// 从mm中寻找vma
 struct vma_struct *find_vma(struct mm_struct *mm, uintptr_t addr);
+// 创建vma一段空间，不会将它分配给mm
 struct vma_struct *vma_create(uintptr_t vm_start, uintptr_t vm_end, uint_t vm_flags);
+// 将vma分配给mm
 void insert_vma_struct(struct mm_struct *mm, struct vma_struct *vma);
 
+// 创建一个mm结构体，不会有初始化的任何值或vma
 struct mm_struct *mm_create(void);
 void mm_destroy(struct mm_struct *mm);
 

@@ -2,6 +2,7 @@
 #include <swapfs.h>
 #include <swap_fifo.h>
 #include <swap_clock.h>
+#include <swap_lru.h>
 #include <stdio.h>
 #include <string.h>
 #include <memlayout.h>
@@ -39,7 +40,7 @@ swap_init(void)
         panic("bad max_swap_offset %08x.\n", max_swap_offset);
      }
 
-     sm = &swap_manager_clock;//use first in first out Page Replacement Algorithm
+     sm = &swap_manager_clock; //use first in first out Page Replacement Algorithm
      int r = sm->init();
      
      if (r == 0)
@@ -81,6 +82,7 @@ volatile unsigned int swap_out_num=0;
 int
 swap_out(struct mm_struct *mm, int n, int in_tick)
 {
+     // 将内存内容交换到磁盘上
      int i;
      for (i = 0; i != n; ++ i)
      {
@@ -102,6 +104,7 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
           assert((*ptep & PTE_V) != 0);
 
           if (swapfs_write( (page->pra_vaddr/PGSIZE+1)<<8, page) != 0) {
+               // 将页面写入交换分区
                     cprintf("SWAP: failed to save\n");
                     sm->map_swappable(mm, v, page, 0);
                     continue;
@@ -120,6 +123,7 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
 int
 swap_in(struct mm_struct *mm, uintptr_t addr, struct Page **ptr_result)
 {
+     // 将磁盘内容换回内存
      struct Page *result = alloc_page();
      assert(result!=NULL);
 
@@ -127,7 +131,7 @@ swap_in(struct mm_struct *mm, uintptr_t addr, struct Page **ptr_result)
      // cprintf("SWAP: load ptep %x swap entry %d to vaddr 0x%08x, page %x, No %d\n", ptep, (*ptep)>>8, addr, result, (result-pages));
     
      int r;
-     if ((r = swapfs_read((*ptep), result)) != 0)
+     if ((r = swapfs_read((*ptep), result)) != 0) // 将ptep内容写入result的位置
      {
         assert(r!=0);
      }

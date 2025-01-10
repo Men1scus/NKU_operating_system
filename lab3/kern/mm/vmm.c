@@ -331,11 +331,12 @@ int
 do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
     int ret = -E_INVAL;
     //try to find a vma which include addr
+    // 在mm中，找到包含addr的vma
     struct vma_struct *vma = find_vma(mm, addr);
 
-    pgfault_num++;
+    pgfault_num++;  // 增加故障页面计数
     //If the addr is in the range of a mm's vma?
-    if (vma == NULL || vma->vm_start > addr) {
+    if (vma == NULL || vma->vm_start > addr) {  // 检查addr是否在vma范围内
         cprintf("not valid addr %x, and  can not find it in vma\n", addr);
         goto failed;
     }
@@ -346,8 +347,10 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
      * THEN
      *    continue process
      */
+    // 确定权限
     uint32_t perm = PTE_U;
-    if (vma->vm_flags & VM_WRITE) {
+    if (vma->vm_flags & VM_WRITE) { // vm_flags: 权限位，
+        // If vma->vm_flags & VM_WRITE == 1/0, then the vma is writable/non writable
         perm |= (PTE_R | PTE_W);
     }
     addr = ROUNDDOWN(addr, PGSIZE);
@@ -373,17 +376,18 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
     *
     */
 
-
+   // 从mm的页目录里获取页表项，返回一个pte_t的指针，页表项用于与物理地址的映射
+   // 三个参数为：指向我想查找的页表的指针，我想查找的虚拟地址，是否要创建
     ptep = get_pte(mm->pgdir, addr, 1);  //(1) try to find a pte, if pte's
                                          //PT(Page Table) isn't existed, then
                                          //create a PT.
-    if (*ptep == 0) {
+    if (*ptep == 0) {   // 没有找到页表项
         if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL) {
             cprintf("pgdir_alloc_page in do_pgfault failed\n");
             goto failed;
         }
-    } else {
-        /*LAB3 EXERCISE 3: YOUR CODE
+    } else {    // 页面在交换空间中
+        /*LAB3 EXERCISE 3: 2210650
         * 请你根据以下信息提示，补充函数
         * 现在我们认为pte是一个交换条目，那我们应该从磁盘加载数据并放到带有phy addr的页面，
         * 并将phy addr与逻辑addr映射，触发交换管理器记录该页面的访问情况
@@ -401,11 +405,17 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
             //(1）According to the mm AND addr, try
             //to load the content of right disk page
             //into the memory which page managed.
+            swap_in(mm, addr, &page);
+            
             //(2) According to the mm,
             //addr AND page, setup the
             //map of phy addr <--->
             //logical addr
-            //(3) make the page swappable.
+            page_insert(mm->pgdir, page, addr, perm);
+
+            //(3) make the page swappable. 换入后的初始化
+            swap_map_swappable(mm, addr, page, 1);
+
             page->pra_vaddr = addr;
         } else {
             cprintf("no swap_init_ok but ptep is %x, failed\n", *ptep);

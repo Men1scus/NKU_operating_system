@@ -25,7 +25,7 @@
  *              le2page (in memlayout.h), (in future labs: le2vma (in vmm.h), le2proc (in proc.h),etc.
  */
 
-list_entry_t pra_list_head, *curr_ptr;
+static list_entry_t pra_list_head, *curr_ptr;
 /*
  * (2) _fifo_init_mm: init pra_list_head and let  mm->sm_priv point to the addr of pra_list_head.
  *              Now, From the memory control struct mm_struct, we can access FIFO PRA
@@ -33,12 +33,18 @@ list_entry_t pra_list_head, *curr_ptr;
 static int
 _clock_init_mm(struct mm_struct *mm)
 {     
-     /*LAB3 EXERCISE 4: YOUR CODE*/ 
-     // 初始化pra_list_head为空链表
-     // 初始化当前指针curr_ptr指向pra_list_head，表示当前页面替换位置为链表头
-     // 将mm的私有成员指针指向pra_list_head，用于后续的页面替换算法操作
-     //cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
-     return 0;
+    /*LAB3 EXERCISE 4: 2210650*/ 
+    // 初始化pra_list_head为空链表
+    list_init(&pra_list_head);
+
+    // 初始化当前指针curr_ptr指向pra_list_head，表示当前页面替换位置为链表头
+    curr_ptr = &pra_list_head;
+
+    // 将mm的私有成员指针指向pra_list_head，用于后续的页面替换算法操作
+    mm->sm_priv = &pra_list_head;
+
+    cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
+    return 0;
 }
 /*
  * (3)_fifo_map_swappable: According FIFO PRA, we should link the most recent arrival page at the back of pra_list_head qeueue
@@ -50,15 +56,21 @@ _clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, in
  
     assert(entry != NULL && curr_ptr != NULL);
     //record the page access situlation
-    /*LAB3 EXERCISE 4: YOUR CODE*/ 
-    // link the most recent arrival page at the back of the pra_list_head qeueue.
+    /*LAB3 EXERCISE 4: 2210650*/ 
+    // link the most recent arrival page at the back of the pra_list_head queue.
     // 将页面page插入到页面链表pra_list_head的末尾
+    list_entry_t* head = (list_entry_t*)mm->sm_priv;
+    list_add_before(head, entry);   // 循环链表，插在head之前即可
+
     // 将页面的visited标志置为1，表示该页面已被访问
+    page->visited = 1;
+    // 每次插到尾部，并将访问位设置为1
     return 0;
 }
 /*
  *  (4)_fifo_swap_out_victim: According FIFO PRA, we should unlink the  earliest arrival page in front of pra_list_head qeueue,
  *                            then set the addr of addr of this page to ptr_page.
+ *  换出链表中的首个未被访问的页面
  */
 static int
 _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
@@ -70,15 +82,50 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
      //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
      //(2)  set the addr of addr of this page to ptr_page
     while (1) {
-        /*LAB3 EXERCISE 4: YOUR CODE*/ 
+        /*LAB3 EXERCISE 4: 2210650*/ 
         // 编写代码
-        // 遍历页面链表pra_list_head，查找最早未被访问的页面
+        // 遍历页面链表pra_list_head，查找最早未被访问的页面，跳过链表头
+        curr_ptr = list_next(curr_ptr); //先移指针，因为初始化指针指向了head
+        if (curr_ptr == head) {
+            curr_ptr = list_next(curr_ptr);
+        }
+
         // 获取当前页面对应的Page结构指针
+        struct Page *page = le2page(curr_ptr, pra_page_link);
+
         // 如果当前页面未被访问，则将该页面从页面链表中删除，并将该页面指针赋值给ptr_page作为换出页面
+        if (page->visited == 0) {
+            list_entry_t *next = list_next(curr_ptr);
+            *ptr_page = page;
+<<<<<<< HEAD
+            cprintf("curr_ptr %p\n", curr_ptr);
+=======
+>>>>>>> 747620b (lab2)
+            list_del(curr_ptr);
+            curr_ptr = list_prev(next);  
+            break;
+        }
         // 如果当前页面已被访问，则将visited标志置为0，表示该页面已被重新访问
+        // 实际上visited是一次被指针转到的“许可”，如果visited变为0，说明时钟转一圈转到这一页了
+        else {
+            page->visited = 0;
+        }
     }
+    
     return 0;
 }
+
+static void
+print_mm_list() {
+    cprintf("print mm: \n");
+    list_entry_t *head = &pra_list_head, *le = head;
+    while ((le = list_next(le)) != head)
+    {
+        struct Page* page = le2page(le, pra_page_link);
+        cprintf("vaddr: 0x%x\n", page->pra_vaddr);
+    }
+}
+
 static int
 _clock_check_swap(void) {
 #ifdef ucore_test

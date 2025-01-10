@@ -187,10 +187,13 @@ void exception_handler(struct trapframe *tf) {
             cprintf("Instruction access fault\n");
             break;
         case CAUSE_ILLEGAL_INSTRUCTION:
-            cprintf("Illegal instruction\n");
+            cprintf("Illegal instruction exception at 0x%16llx\n", tf->epc);
+            tf->epc += 4;
             break;
         case CAUSE_BREAKPOINT:
-            cprintf("Breakpoint\n");
+            cprintf("Exeption type: breakpoint\n");
+            cprintf("ebreak caught at 0x%016llx\n", tf->epc);
+            tf->epc += 2;
             break;
         case CAUSE_MISALIGNED_LOAD:
             cprintf("Load address misaligned\n");

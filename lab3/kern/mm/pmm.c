@@ -244,15 +244,15 @@ pte_t *get_pte(pde_t *pgdir, uintptr_t la, bool create) {
      *   PTE_U           0x004                   // page table/directory entry
      * flags bit : User can access
      */
-    pde_t *pdep1 = &pgdir[PDX1(la)];
+    pde_t *pdep1 = &pgdir[PDX1(la)];    // 计算虚拟地址 la 对应的一级页目录项的索引
     if (!(*pdep1 & PTE_V)) {
-        struct Page *page;
+        struct Page *page;              // 无效创建新页目录项
         if (!create || (page = alloc_page()) == NULL) {
             return NULL;
         }
         set_page_ref(page, 1);
         uintptr_t pa = page2pa(page);
-        memset(KADDR(pa), 0, PGSIZE);
+        memset(KADDR(pa), 0, PGSIZE);   // KADDR(物理地址) -> 物理地址对应的虚拟地址。PADDR相反
         *pdep1 = pte_create(page2ppn(page), PTE_U | PTE_V);
     }
     pde_t *pdep0 = &((pde_t *)KADDR(PDE_ADDR(*pdep1)))[PDX0(la)];

@@ -18,6 +18,9 @@
 // To construct a linear address la from PDX(la), PTX(la), and PGOFF(la),
 // use PGADDR(PDX(la), PTX(la), PGOFF(la)).
 
+// 物理地址、虚拟地址和PTE的定义方式
+
+
 // RISC-V uses 39-bit virtual address to access 56-bit physical address!
 // Sv39 virtual address:
 // +----9----+----9---+----9---+---12--+
@@ -34,7 +37,7 @@
 // |  PPN[2] | PPN[1] | PPN[0] |Reserved|D|A|G|U|X|W|R|V|
 // +---------+----+---+--------+--------+---------------+
 
-// page directory index
+// page directory index 获取低一级、第二级的 页目录索引
 #define PDX1(la) ((((uintptr_t)(la)) >> PDX1SHIFT) & 0x1FF)
 #define PDX0(la) ((((uintptr_t)(la)) >> PDX0SHIFT) & 0x1FF)
 
